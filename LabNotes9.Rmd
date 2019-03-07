@@ -1,0 +1,266 @@
+---
+title: "Lab 9 Notes"
+author: "Alyssa Winchell"
+date: "March 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Packages:
+
+```{r include=FALSE}
+
+library(beepr) # beep (on CRAN)
+library(datapasta) # copy/paste (on CRAN)
+library(tidyverse) 
+library(igraph) # network stuff (on CRAN)
+library(multiplex) # network stuff (on CRAN)
+library(ggraph) # More graph stuff (on CRAN)
+library(gt) # tables (get development version!!!)
+# remotes::install_github("rstudio/gt")
+library(ggalluvial) # Sankeys (on CRAN)
+library(readxl) # Get .xls (on CRAN)
+library(praise) # Get/share praise! 
+
+```
+
+###Part 1: Networl Analysis Examples- Grapth Theory (Les Miserables character connections)
+
+```{r}
+
+# Stored as a .gml file (graph modeling language) format supports network data
+# Use multiplex::read.gml()
+
+lm_df <- read.gml("lesmis.gml")
+
+les_mis <- graph_from_data_frame(lm_df, directed = FALSE) #no direction in our data
+beep(sound = 2) #don't pipe this into code or it will save it as an audio file. Good for an alarm clock for code that takes a long time to run
+praise() #praise can also be built to be any format you want
+#thegoodshirt on github will pull random quotes from a character input
+
+```
+
+Find some quantitative metrics:
+
+```{r}
+
+#Graph diameter:
+diameter(les_mis) # Smallest maximum distance (links), tells you where the link is
+
+# Farthest vertices
+farthest_vertices(les_mis) #tells you how long the furthest distance is
+
+```
+
+Plot:
+
+```{r}
+
+plot(les_mis,
+     vertex.color = "orange",
+     vertex.frame.color = "NA",
+     vertex.size = 5,
+     vertex.label.cex = 0.5)
+
+```
+
+A little more customized graphs using gg formats:
+
+```{r}
+
+ggraph(les_mis, layout = 'kk')  +
+  geom_edge_link() +
+  geom_node_text(aes(label = name), size = 2, color = "white") +
+  theme_dark()
+
+#arc graph, lays out characters linear and then draws arc between them
+
+ggraph(les_mis, layout = "linear") +
+  geom_edge_arc(alpha = 0.8) +
+  geom_node_text(aes(label = name), angle = 90, size = 2, hjust = 1) +
+  theme_graph()
+
+#coerced into circular format, has gg syntax
+# Try layout = "circle", "tree"
+ggraph(les_mis, layout = "tree") +
+  geom_edge_fan(color = "purple") + 
+  geom_node_text(aes(label = name), size = 2, color = "black", angle = 45) +
+  theme_void()
+beep(3)
+
+```
+
+Or the ones that we are not used to seeing:
+
+```{r}
+
+# And a circular form of linear arcs:
+
+ggraph(les_mis, layout = "linear", circular = TRUE) +
+  geom_edge_arc(alpha = 0.5) +
+  geom_node_point(aes(colour = name), size = 3, show.legend = FALSE) +
+  geom_node_text(aes(label = name), size = 3, hjust = "outward") +
+  theme_void()
+
+#could use to show variables that have a correlation above some threshold or another mathematical thing
+
+```
+
+###Part 2: Sankey Diagrams
+Can also use:
+- ggforce 
+- ggalluvial
+- NetworkD3 
+- ggforce
+
+```{r}
+
+sdf <- read_csv("sankey_df.csv") %>% 
+  select(-X1) #makes table showing counts of all types of connections
+
+```
+
+Plot with ggalluvial:
+
+```{r}
+
+ggplot(sdf, aes(y = weight, axis1 = before, axis2 = after)) + #can be whatever your unit is going from one thing to another thing
+  geom_alluvium(aes(fill = before, color = before), show.legend = FALSE, width = 1/5) +
+  geom_stratum(width = 1/5, color = "purple") + #creates bins for each input/output category thing
+  geom_text(stat = "stratum", label.strata = TRUE) +
+  scale_fill_manual(values = c("magenta","blue","green")) +
+  scale_color_manual(values = c("magenta","blue","green")) +
+  scale_x_discrete(limits = c("Before", "After"), expand = c(0,0)) + #tells r that these are discrete categories of before and after. expand gets rid of the weird edge space
+  theme_minimal()
+
+```
+
+###Part 3: Creating your own tibbles
+
+Word tibble often used interchangabley with dataframe these days.
+"R For Data Science" is apparently a really good book and is available for free online, highly recommended by Allison
+
+```{r}
+
+Jeff_the_tibble <- tribble(
+  ~jonesy, ~made, ~this, ~awesomething,
+  1, "yes", 0, 10000, #don't leave any column blank, put "NA" instead
+  2, "maybe", 25, "NA",
+  3, "no", 30, 29929
+)
+#helpful to give people some data when sharing code on stackoeverflow etc for help but should not use for data wrangling
+#can also help make a simple version of data for troubleshooting
+
+```
+
+Check out Jenny Bryan's awesome package 'reprex' which encourages people to make little things that allow you to get help from others online and stuff
+
+### Part 3 Part 2: Datapasta
+Can I copy and paste data from ouside sources and have R store it as a data frame?
+
+Go to addins if you have datapasta added and you can see datapasta in there.
+
+If there is data that is publically available but not downloadable, this will download it for you.
+
+- copy table to clipboard
+- go to Tools -> Addins -> datapasta:: paste as tribble
+- ta da!
+
+```{r}
+
+gotthatdata <- 
+  
+#go to add ins and press enter/execute
+  
+write_csv(gotthatdata, "storingthings.csv")
+
+weather_data <- rename(weather_data, Condition = X) #how to change names of columns
+
+```
+
+Doesn't update and no real history of where data came from, so not ideal but can be an option. Can copy just cleaned up data and then put into csv from here.
+
+Keep metadata!
+
+Can also create keyboard short cuts in add ins window.
+
+###Part 3 Part 3: Beautiful customized tables with 'gt'
+Can use to make heatmaps in table also
+Gt also has a beautiful ReadMe on github #goals you could say
+
+```{r}
+
+#library(devtools)
+
+#remotes::install_github("rstudio/gt")
+
+#for installing. See Lab key for examples of nice charts and options
+
+```
+
+A few other things:
+
+##Reading in directly from a website/url:
+
+make sure write in a history of access so you know when to update.
+
+```{r}
+
+nuclear <- read_delim("https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/PowerReactorStatusForLast365Days.txt", delim = "|", col_names = TRUE) #delim is bc of how this particular data is deliminated by a vertical line not commas
+
+```
+
+##Reading in Excel Files
+
+```{r}
+
+pesticides <- read_xls("PesticideResidues.xls")
+
+# Dang, there are two extra rows with information in them. Bummer. But: 
+
+pest2 <- read_xls("PesticideResidues.xls", skip = 2, col_names = TRUE) # Ta da! 
+
+pest <- pest2 %>% 
+  janitor::clean_names()
+
+```
+
+Data Wrangling and Sankey Table from the excel data wow
+
+```{r}
+
+crops <- pest %>% 
+  filter(commodity == "KALE",
+         !is.na(grower_city)) %>% #!is.na is another way to get rid of NAs
+  separate(grower_city,
+           c("grow_city","grow_state"),
+           sep = ",") %>% #break up city and state info when it exists to clean up data so Oakland and Oakland, CA are not different. Puts NA in second column when there is no state data
+  separate(collection_site_city,
+           c("market_city","market_state"),
+           sep = ",") %>% 
+  group_by(organic_commodity, grow_city, market_city) %>% 
+  tally()
+
+```
+
+Make a Sankey Diagram:
+
+```{r}
+
+ggplot(crops, aes(y = n, axis1 = organic_commodity, axis2 = grow_city, axis3 = market_city)) +
+  geom_alluvium(aes(fill = organic_commodity, color = organic_commodity), show.legend = FALSE, width = 1/5) +
+  geom_stratum(width = 1/5, color = "gray") +
+  geom_text(stat = "stratum", label.strata = TRUE, size = 2) +
+  scale_fill_manual(values = c("purple","blue")) +
+  scale_color_manual(values = c("purple","blue")) +
+  scale_x_discrete(limits = c("status", "grown","market"), expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_bw()
+
+beep(5)
+
+```
+
